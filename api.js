@@ -1,6 +1,15 @@
 // ============================================
 // QuickNotes — API client
 // ============================================
+//
+// IMPORTANT: JSONPlaceholder is a fake API. It replies to POST, DELETE,
+// PUT and PATCH with realistic status codes and bodies, but it does NOT
+// actually store changes. So:
+//   - A created note always comes back with id: 101.
+//   - A deleted note is gone from our local list, but if you click
+//     "Load notes" again it will still be there on the server.
+// This is expected behaviour and exactly how the API is designed.
+// In a real API, the server would persist every change.
 
 const API_URL = "https://jsonplaceholder.typicode.com/posts";
 const MAX_TITLE_LENGTH = 100;
@@ -45,14 +54,21 @@ function buildNoteElement(note) {
 
   const title = document.createElement("h3");
   title.classList.add("note-title");
-  title.textContent = note.title;
+  title.textContent = note.title; // textContent, never innerHTML
 
   const body = document.createElement("p");
   body.classList.add("note-body");
   body.textContent = note.body || "";
 
+  const del = document.createElement("button");
+  del.type = "button";
+  del.classList.add("delete-btn");
+  del.textContent = "Delete";
+  del.addEventListener("click", () => deleteNote(note.id, li));
+
   li.appendChild(title);
   li.appendChild(body);
+  li.appendChild(del);
   return li;
 }
 
@@ -122,6 +138,26 @@ form.addEventListener("submit", async (event) => {
     submitBtn.disabled = false;
   }
 });
+
+// ---------- DELETE: remove note ----------
+async function deleteNote(id, element) {
+  setStatus("Deleting note...", null);
+
+  try {
+    const { status } = await request(`${API_URL}/${id}`, {
+      method: "DELETE",
+    });
+    element.remove();
+    setStatus(`Note deleted (status ${status}).`, "success");
+
+    if (list.children.length === 0) {
+      showEmpty("No notes yet. Create one above!");
+    }
+  } catch (error) {
+    setStatus("Could not delete the note. Please try again.", "error");
+    console.error("Delete failed:", error.message);
+  }
+}
 
 // ---------- Wire the load button ----------
 loadBtn.addEventListener("click", loadNotes);
